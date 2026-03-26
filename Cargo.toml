@@ -1,0 +1,38 @@
+[package]
+name = "eruka-mcp"
+version = "0.1.0"
+edition = "2021"
+authors = ["DIRMACS <engineering@dirmacs.com>"]
+license = "MIT"
+description = "MCP (Model Context Protocol) server for Eruka — anti-hallucination context memory for AI agents"
+repository = "https://github.com/dirmacs/eruka-mcp"
+homepage = "https://eruka.dirmacs.com"
+readme = "README.md"
+keywords = ["mcp", "ai", "context", "memory", "hallucination"]
+categories = ["command-line-utilities", "web-programming"]
+
+[[bin]]
+name = "eruka-mcp"
+path = "src/main.rs"
+
+[dependencies]
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+# Async
+tokio = { version = "1", features = ["full"] }
+# Errors
+anyhow = "1"
+# Crypto (for API key hashing)
+sha2 = "0.10"
+# CLI
+clap = { version = "4", features = ["derive", "env"] }
+# Logging
+tracing = "0.1"
+tracing-subscriber = "0.3"
+# HTTP client (to call Eruka API)
+reqwest = { version = "0.12", features = ["json"] }
+urlencoding = "2"
+# HTTP server (SSE transport)
+axum = "0.7"
+tower-http = { version = "0.6", features = ["cors"] }
