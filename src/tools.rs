@@ -181,6 +181,19 @@ pub fn get_tool_definitions(tier: Tier) -> Vec<Value> {
     tools
 }
 
+/// Maximum allowed length for string arguments (prevent abuse)
+const MAX_ARG_LEN: usize = 10_000;
+/// Maximum allowed length for path arguments
+const MAX_PATH_LEN: usize = 256;
+
+/// Check if a tool requires write permissions
+pub fn requires_write(tool_name: &str) -> bool {
+    matches!(
+        tool_name,
+        "eruka_write_context" | "eruka_add_relationship" | "eruka_research_gap"
+    )
+}
+
 /// Execute a tool via Eruka HTTP API
 pub async fn execute_tool(
     client: &ErukaClient,
@@ -191,6 +204,9 @@ pub async fn execute_tool(
     if requires_pro(tool_name) && tier == Tier::Free {
         anyhow::bail!("This tool requires Pro tier");
     }
+
+    // Validate all string argument lengths
+    validate_arg_lengths(&args)?;
 
     match tool_name {
         "eruka_get_context" => {
@@ -266,7 +282,143 @@ pub async fn execute_tool(
 }
 
 fn arg_str<'a>(args: &'a Value, key: &str) -> Result<&'a str> {
-    args.get(key)
+    let val = args.get(key)
         .and_then(|v| v.as_str())
-        .ok_or_else(|| anyhow::anyhow!("Missing required argument: {}", key))
+        .ok_or_else(|| anyhow::anyhow!("Missing required argument: {}", key))?;
+
+    // Enforce path length for path-like arguments
+    if key == "path" || key == "field_path" {
+        if val.len() > MAX_PATH_LEN {
+            anyhow::bail!("Argument '{}' exceeds maximum path length ({})", key, MAX_PATH_LEN);
+        }
+    }
+
+    Ok(val)
+}
+
+/// Validate that no string argument exceeds MAX_ARG_LEN.
+fn validate_arg_lengths(args: &Value) -> Result<()> {
+    if let Some(obj) = args.as_object() {
+        for (key, value) in obj {
+            if let Some(s) = value.as_str() {
+                if s.len() > MAX_ARG_LEN {
+                    anyhow::bail!(
+                        "Argument '{}' exceeds maximum length ({} > {})",
+                        key, s.len(), MAX_ARG_LEN
+                    );
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_requires_pro() {
+        assert!(requires_pro("eruka_query_temporal"));
+        assert!(requires_pro("eruka_research_gap"));
+        assert!(requires_pro("eruka_get_constraint"));
+        assert!(!requires_pro("eruka_get_context"));
+        assert!(!requires_pro("eruka_write_context"));
+        assert!(!requires_pro("eruka_search_context"));
+    }
+
+    #[test]
+    fn test_requires_write() {
+        assert!(requires_write("eruka_write_context"));
+        assert!(requires_write("eruka_add_relationship"));
+        assert!(requires_write("eruka_research_gap"));
+        assert!(!requires_write("eruka_get_context"));
+        assert!(!requires_write("eruka_search_context"));
+        assert!(!requires_write("eruka_get_gaps"));
+    }
+
+    #[test]
+    fn test_arg_str_present() {
+        let args = serde_json::json!({"path": "identity/company_name"});
+        assert_eq!(arg_str(&args, "path").unwrap(), "identity/company_name");
+    }
+
+    #[test]
+    fn test_arg_str_missing() {
+        let args = serde_json::json!({});
+        assert!(arg_str(&args, "path").is_err());
+    }
+
+    #[test]
+    fn test_arg_str_path_too_long() {
+        let long_path = "a/".repeat(200);
+        let args = serde_json::json!({"path": long_path});
+        assert!(arg_str(&args, "path").is_err());
+    }
+
+    #[test]
+    fn test_validate_arg_lengths_ok() {
+        let args = serde_json::json!({"query": "what is DIRMACS?", "scope": "*"});
+        assert!(validate_arg_lengths(&args).is_ok());
+    }
+
+    #[test]
+    fn test_validate_arg_lengths_too_long() {
+        let huge = "x".repeat(MAX_ARG_LEN + 1);
+        let args = serde_json::json!({"value": huge});
+        assert!(validate_arg_lengths(&args).is_err());
+    }
+
+    #[test]
+    fn test_validate_arg_lengths_non_string_ok() {
+        let args = serde_json::json!({"depth": 3, "include_metadata": true});
+        assert!(validate_arg_lengths(&args).is_ok());
+    }
+
+    #[test]
+    fn test_tool_definitions_free_tier() {
+        let tools = get_tool_definitions(Tier::Free);
+        let names: Vec<&str> = tools.iter()
+            .filter_map(|t| t.get("name").and_then(|n| n.as_str()))
+            .collect();
+        assert!(names.contains(&"eruka_get_context"));
+        assert!(names.contains(&"eruka_write_context"));
+        assert!(!names.contains(&"eruka_query_temporal"));
+        assert!(!names.contains(&"eruka_research_gap"));
+    }
+
+    #[test]
+    fn test_tool_definitions_pro_tier() {
+        let tools = get_tool_definitions(Tier::Pro);
+        let names: Vec<&str> = tools.iter()
+            .filter_map(|t| t.get("name").and_then(|n| n.as_str()))
+            .collect();
+        assert!(names.contains(&"eruka_get_context"));
+        assert!(names.contains(&"eruka_query_temporal"));
+        assert!(names.contains(&"eruka_research_gap"));
+    }
+
+    #[test]
+    fn test_tool_definitions_all_have_names_and_schemas() {
+        for tier in [Tier::Free, Tier::Pro, Tier::Enterprise] {
+            let tools = get_tool_definitions(tier);
+            for tool in &tools {
+                assert!(tool.get("name").is_some(), "Tool missing name");
+                assert!(tool.get("description").is_some(), "Tool missing description");
+                assert!(tool.get("inputSchema").is_some(), "Tool missing inputSchema");
+            }
+        }
+    }
+
+    #[test]
+    fn test_tool_names_unique() {
+        let tools = get_tool_definitions(Tier::Enterprise);
+        let mut names: Vec<&str> = tools.iter()
+            .filter_map(|t| t.get("name").and_then(|n| n.as_str()))
+            .collect();
+        let count = names.len();
+        names.sort();
+        names.dedup();
+        assert_eq!(names.len(), count, "Duplicate tool names found");
+    }
 }
