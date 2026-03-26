@@ -186,7 +186,9 @@ const MAX_ARG_LEN: usize = 10_000;
 /// Maximum allowed length for path arguments
 const MAX_PATH_LEN: usize = 256;
 
-/// Check if a tool requires write permissions
+/// Check if a tool requires write permissions.
+/// Used by consumers to enforce read-only keys.
+#[allow(dead_code)]
 pub fn requires_write(tool_name: &str) -> bool {
     matches!(
         tool_name,
