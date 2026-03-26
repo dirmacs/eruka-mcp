@@ -45,20 +45,53 @@
         pre code .command { color: #d2a8ff; }
     </style>
     <script>
-        // Minimal syntax highlighting for code blocks
         document.addEventListener('DOMContentLoaded', () => {
             document.querySelectorAll('pre code').forEach(block => {
-                let html = block.innerHTML;
-                // Comments
-                html = html.replace(/(#[^\n]*)/g, '<span style="color:#8b949e">$1</span>');
-                // Strings
-                html = html.replace(/("(?:[^"\\]|\\.)*")/g, '<span style="color:#a5d6ff">$1</span>');
-                // Keywords
-                html = html.replace(/\b(cargo|install|export|claude)\b/g, '<span style="color:#d2a8ff">$1</span>');
-                // URLs
-                html = html.replace(/(https?:\/\/[^\s"<]+)/g, '<span style="color:#10b981">$1</span>');
-                block.innerHTML = html;
+                // Tokenize then colorize (avoids regex-in-regex mojibake)
+                let text = block.textContent;
+                let result = '';
+                let i = 0;
+                while (i < text.length) {
+                    // Comments (# to end of line)
+                    if (text[i] === '#' && (i === 0 || text[i-1] === '\n' || text[i-1] === ' ')) {
+                        let end = text.indexOf('\n', i);
+                        if (end === -1) end = text.length;
+                        result += '<span style="color:#6e7681">' + escHtml(text.slice(i, end)) + '</span>';
+                        i = end;
+                    }
+                    // Strings
+                    else if (text[i] === '"') {
+                        let end = i + 1;
+                        while (end < text.length && text[end] !== '"') { if (text[end] === '\\') end++; end++; }
+                        end = Math.min(end + 1, text.length);
+                        result += '<span style="color:#a5d6ff">' + escHtml(text.slice(i, end)) + '</span>';
+                        i = end;
+                    }
+                    // URLs
+                    else if (text.slice(i, i+8).match(/^https?:\/\//)) {
+                        let end = i; while (end < text.length && !/[\s"<]/.test(text[end])) end++;
+                        result += '<span style="color:#10b981">' + escHtml(text.slice(i, end)) + '</span>';
+                        i = end;
+                    }
+                    // Keywords
+                    else if (/[a-z]/.test(text[i]) && (i === 0 || /[\s\n{]/.test(text[i-1]))) {
+                        let end = i; while (end < text.length && /[a-z_-]/.test(text[end])) end++;
+                        let word = text.slice(i, end);
+                        if (['cargo','install','export','claude','eruka'].includes(word)) {
+                            result += '<span style="color:#d2a8ff">' + word + '</span>';
+                        } else {
+                            result += escHtml(word);
+                        }
+                        i = end;
+                    }
+                    else {
+                        result += escHtml(text[i]);
+                        i++;
+                    }
+                }
+                block.innerHTML = result;
             });
+            function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
         });
     </script>
 </head>
