@@ -1,6 +1,10 @@
-# eruka-mcp
+<p align="center">
+  <img src="docs/img/eruka-mcp-logo.svg" width="128" alt="eruka-mcp">
+</p>
 
-MCP (Model Context Protocol) server for [Eruka](https://eruka.dirmacs.com) — anti-hallucination context memory for AI agents.
+<h1 align="center">eruka-mcp</h1>
+
+<p align="center">MCP (Model Context Protocol) server for <a href="https://eruka.dirmacs.com">Eruka</a> — anti-hallucination context memory for AI agents.</p>
 
 ## What is Eruka?
 
