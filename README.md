@@ -89,6 +89,15 @@ eruka-mcp --transport sse --port 8080
 | `eruka_query_temporal` | Query context at a point in time | Pro |
 | `eruka_research_gap` | Auto-research and fill knowledge gaps | Pro |
 
+## CLI Alias
+
+For shorter commands, add an alias:
+
+```bash
+alias eruka='eruka-mcp'
+# Then: eruka get "*", eruka write ..., eruka health
+```
+
 ## CLI Commands (v0.2.0+)
 
 eruka-mcp works as both an MCP server AND a standalone CLI tool. Without a subcommand, it runs as an MCP server (backward compatible).
