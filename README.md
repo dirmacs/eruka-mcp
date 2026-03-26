@@ -89,6 +89,42 @@ eruka-mcp --transport sse --port 8080
 | `eruka_query_temporal` | Query context at a point in time | Pro |
 | `eruka_research_gap` | Auto-research and fill knowledge gaps | Pro |
 
+## CLI Commands (v0.2.0+)
+
+eruka-mcp works as both an MCP server AND a standalone CLI tool. Without a subcommand, it runs as an MCP server (backward compatible).
+
+```bash
+# Read all context
+eruka-mcp get "*"
+
+# Read a specific field
+eruka-mcp get "identity/company_name"
+
+# Write a field
+eruka-mcp write "identity/mission" "Build anti-hallucination infrastructure"
+
+# Write with custom confidence and source
+eruka-mcp write "market/tam" '$4.2B' --confidence 0.7 --source agent_inference
+
+# Search
+eruka-mcp search "revenue"
+
+# Completeness report
+eruka-mcp completeness
+
+# Knowledge gaps
+eruka-mcp gaps
+
+# Health check
+eruka-mcp health
+
+# JSON output (for scripting)
+eruka-mcp get "*" --format json
+eruka-mcp completeness --format json
+```
+
+All CLI commands use the same `ERUKA_API_KEY` and `ERUKA_API_URL` environment variables as the MCP server.
+
 ## Environment Variables
 
 | Variable | Description | Default |
@@ -96,20 +132,27 @@ eruka-mcp --transport sse --port 8080
 | `ERUKA_API_KEY` | Service key (required) | — |
 | `ERUKA_API_URL` | Eruka API URL | `https://eruka.dirmacs.com` |
 
-## CLI Options
+## CLI Reference
 
 ```
-eruka-mcp [OPTIONS]
+eruka-mcp [OPTIONS] [COMMAND]
+
+Commands:
+  get             Read context fields
+  write           Write a context field
+  search          Search context
+  completeness    Show completeness report
+  gaps            List knowledge gaps
+  health          Check API health
 
 Options:
-      --api-url <URL>        Eruka API URL [env: ERUKA_API_URL] [default: https://eruka.dirmacs.com]
+      --api-url <URL>        Eruka API URL [env: ERUKA_API_URL]
       --api-key <KEY>        Service key [env: ERUKA_API_KEY]
       --tier <TIER>          Tier override [default: free]
       --transport <MODE>     stdio or sse [default: stdio]
-      --port <PORT>          Port for SSE transport [default: 8080]
-      --debug                Enable debug logging
-  -h, --help                 Print help
-  -V, --version              Print version
+      --port <PORT>          SSE port [default: 8080]
+      --format <FMT>         Output: text or json [default: text]
+      --debug                Debug logging
 ```
 
 ## License
