@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ config.title }}</title>
+    <link rel="icon" type="image/svg+xml" href="{{ get_url(path='eruka-mcp-logo.svg') }}">
+    <style>
+        :root { --bg: #0d1117; --fg: #c9d1d9; --accent: #10b981; --card: #161b22; --border: #30363d; --dim: #8b949e; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: var(--bg); color: var(--fg); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height: 1.6; }
+        .hero { text-align: center; padding: 4rem 1rem 2rem; }
+        .hero img { width: 96px; margin-bottom: 1rem; }
+        .hero h1 { font-size: 2.5rem; color: #fff; margin-bottom: 0.5rem; }
+        .hero p { color: var(--dim); font-size: 1.1rem; max-width: 600px; margin: 0 auto 1.5rem; }
+        .badges { display: flex; gap: 0.5rem; justify-content: center; flex-wrap: wrap; margin-bottom: 2rem; }
+        .badges img { height: 20px; }
+        .install { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 1rem 1.5rem; max-width: 500px; margin: 0 auto 3rem; font-family: monospace; font-size: 0.95rem; color: var(--accent); }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; max-width: 900px; margin: 0 auto; padding: 0 1rem 3rem; }
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 1.5rem; }
+        .card h3 { color: #fff; margin-bottom: 0.5rem; }
+        .card p { color: var(--dim); font-size: 0.9rem; }
+        table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.85rem; }
+        th, td { padding: 0.5rem 0.75rem; text-align: left; border-bottom: 1px solid var(--border); }
+        th { color: var(--accent); font-weight: 600; }
+        .section { max-width: 900px; margin: 0 auto; padding: 0 1rem 3rem; }
+        .section h2 { color: #fff; margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+        code { background: var(--card); padding: 0.1em 0.4em; border-radius: 3px; font-size: 0.85rem; }
+        pre { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; overflow-x: auto; margin: 1rem 0; }
+        pre code { background: none; padding: 0; }
+        .state { display: inline-block; padding: 0.15em 0.5em; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
+        .state-confirmed { background: #10b98133; color: #10b981; }
+        .state-inferred { background: #eab30833; color: #eab308; }
+        .state-uncertain { background: #8b5cf633; color: #8b5cf6; }
+        .state-unknown { background: #ef444433; color: #ef4444; }
+        footer { text-align: center; padding: 2rem; color: var(--dim); font-size: 0.8rem; border-top: 1px solid var(--border); margin-top: 2rem; }
+        a { color: var(--accent); text-decoration: none; }
+        a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="hero">
+        <img src="{{ get_url(path='eruka-mcp-logo.svg') }}" alt="eruka-mcp">
+        <h1>eruka-mcp</h1>
+        <p>MCP server for Eruka context memory. Tells AI agents what it <strong>knows</strong>, <strong>thinks</strong>, what's <strong>stale</strong>, and what it <strong>doesn't know</strong>.</p>
+        <div class="badges">
+            <img src="https://img.shields.io/crates/v/eruka-mcp?style=flat-square&color=10b981" alt="crates.io">
+            <img src="https://img.shields.io/crates/d/eruka-mcp?style=flat-square&color=059669" alt="downloads">
+            <img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="MIT">
+            <img src="https://img.shields.io/badge/MCP-compatible-green?style=flat-square" alt="MCP">
+        </div>
+        <div class="install">cargo install eruka-mcp</div>
+    </div>
+
+    <div class="section">
+        <h2>Knowledge States</h2>
+        <p>Every piece of context has a confidence state — AI agents receive constraint text that prevents hallucination:</p>
+        <table>
+            <tr><th>State</th><th>Confidence</th><th>Meaning</th><th>Agent Behavior</th></tr>
+            <tr><td><span class="state state-confirmed">CONFIRMED</span></td><td>1.0</td><td>User verified ground truth</td><td>Use directly</td></tr>
+            <tr><td><span class="state state-inferred">INFERRED</span></td><td>0.45-0.85</td><td>AI extracted, high confidence</td><td>Use with caveat</td></tr>
+            <tr><td><span class="state state-uncertain">UNCERTAIN</span></td><td>0.05-0.30</td><td>Was confirmed, now stale</td><td>Flag as possibly outdated</td></tr>
+            <tr><td><span class="state state-unknown">UNKNOWN</span></td><td>0.0</td><td>Needed but missing</td><td><strong>DO NOT fabricate</strong></td></tr>
+        </table>
+    </div>
+
+    <div class="grid">
+        <div class="card">
+            <h3>13 MCP Tools</h3>
+            <p>Read, write, search context. Detect gaps. Get constraints. Assess quality. Compress for token efficiency. All via JSON-RPC over stdio or SSE.</p>
+        </div>
+        <div class="card">
+            <h3>Anti-Hallucination</h3>
+            <p>Constraint injection prevents AI agents from making things up. Before generation, Eruka checks readiness and injects: <code>"DO NOT fabricate: revenue. This field is UNKNOWN."</code></p>
+        </div>
+        <div class="card">
+            <h3>Service Key Auth</h3>
+            <p>Authenticate with <code>eruka_sk_*</code> service keys. Scope enforcement (read/write/admin). Input validation with length limits. Per-key rate limiting.</p>
+        </div>
+        <div class="card">
+            <h3>Tier Gating</h3>
+            <p>Free tier: 8 core tools. Pro tier: +temporal queries, research. Enterprise: all 13 tools including compression and quality scoring.</p>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>Tools Reference</h2>
+        <table>
+            <tr><th>Tool</th><th>Description</th><th>Tier</th></tr>
+            <tr><td><code>eruka_get_context</code></td><td>Read context fields by path or prefix</td><td>Free</td></tr>
+            <tr><td><code>eruka_write_context</code></td><td>Write a field with knowledge state</td><td>Free</td></tr>
+            <tr><td><code>eruka_search_context</code></td><td>Hybrid keyword + vector search</td><td>Free</td></tr>
+            <tr><td><code>eruka_get_completeness</code></td><td>Category coverage report</td><td>Free</td></tr>
+            <tr><td><code>eruka_get_gaps</code></td><td>List missing knowledge areas</td><td>Free</td></tr>
+            <tr><td><code>eruka_detect_gaps</code></td><td>Detect gaps with constraint text</td><td>Free</td></tr>
+            <tr><td><code>eruka_get_constraint</code></td><td>Anti-hallucination constraint for a task</td><td>Free</td></tr>
+            <tr><td><code>eruka_get_voice</code></td><td>Brand voice and tone guidelines</td><td>Free</td></tr>
+            <tr><td><code>eruka_get_related</code></td><td>Knowledge graph traversal</td><td>Pro</td></tr>
+            <tr><td><code>eruka_add_relationship</code></td><td>Add entity relationship</td><td>Pro</td></tr>
+            <tr><td><code>eruka_get_context_compressed</code></td><td>Token-efficient compressed context</td><td>Enterprise</td></tr>
+            <tr><td><code>eruka_query_temporal</code></td><td>Time-range context queries</td><td>Pro</td></tr>
+            <tr><td><code>eruka_research_gap</code></td><td>Auto-research missing knowledge</td><td>Enterprise</td></tr>
+        </table>
+    </div>
+
+    <div class="section">
+        <h2>Quick Start</h2>
+        <pre><code># Install
+cargo install eruka-mcp
+
+# Set environment
+export ERUKA_API_URL=https://eruka.dirmacs.com
+export ERUKA_API_KEY=eruka_sk_your_key_here
+
+# Add to Claude Desktop (~/.config/claude/claude_desktop_config.json)
+{
+  "mcpServers": {
+    "eruka": {
+      "command": "eruka-mcp",
+      "args": ["--api-url", "https://eruka.dirmacs.com", "--api-key", "eruka_sk_..."]
+    }
+  }
+}
+
+# Add to Claude Code
+claude mcp add eruka -- eruka-mcp --api-url https://eruka.dirmacs.com --api-key eruka_sk_...</code></pre>
+    </div>
+
+    <div class="section">
+        <h2>Architecture</h2>
+        <pre><code>Claude / Cursor / VS Code
+        |
+        | JSON-RPC (stdio or SSE)
+        v
+   eruka-mcp (this crate)
+        |
+        | HTTPS + API Key
+        v
+   Eruka API (eruka.dirmacs.com)
+        |
+        v
+   PostgreSQL + pgvector</code></pre>
+    </div>
+
+    <footer>
+        Built by <a href="https://dirmacs.com">DIRMACS</a> &middot;
+        <a href="https://github.com/dirmacs/eruka-mcp">GitHub</a> &middot;
+        <a href="https://crates.io/crates/eruka-mcp">crates.io</a> &middot;
+        <a href="https://github.com/dirmacs/dui">DUI Components</a>
+    </footer>
+</body>
+</html>

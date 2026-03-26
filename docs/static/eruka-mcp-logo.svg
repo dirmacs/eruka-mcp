@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1a2e"/>
+      <stop offset="100%" style="stop-color:#0d1117"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#10b981"/>
+      <stop offset="100%" style="stop-color:#059669"/>
+    </linearGradient>
+  </defs>
+  <!-- Background circle -->
+  <circle cx="64" cy="64" r="60" fill="url(#bg)" stroke="url(#accent)" stroke-width="3"/>
+  <!-- Brain/knowledge icon (simplified) -->
+  <path d="M 48 56 Q 48 38 64 38 Q 80 38 80 56" fill="none" stroke="#10b981" stroke-width="3" stroke-linecap="round"/>
+  <path d="M 52 56 Q 52 44 64 44 Q 76 44 76 56" fill="none" stroke="#059669" stroke-width="2.5" stroke-linecap="round"/>
+  <!-- Knowledge state dots (4 states) -->
+  <circle cx="48" cy="62" r="4" fill="#10b981"/> <!-- CONFIRMED -->
+  <circle cx="58" cy="62" r="4" fill="#eab308"/> <!-- INFERRED -->
+  <circle cx="68" cy="62" r="4" fill="#8b5cf6"/> <!-- UNCERTAIN -->
+  <circle cx="78" cy="62" r="4" fill="#ef4444"/> <!-- UNKNOWN -->
+  <!-- Connection lines (MCP protocol) -->
+  <line x1="40" y1="76" x2="88" y2="76" stroke="#10b981" stroke-width="2" opacity="0.4"/>
+  <line x1="44" y1="82" x2="84" y2="82" stroke="#10b981" stroke-width="2" opacity="0.3"/>
+  <line x1="48" y1="88" x2="80" y2="88" stroke="#10b981" stroke-width="2" opacity="0.2"/>
+  <!-- Plug icon (MCP connection) -->
+  <rect x="58" y="72" width="12" height="8" rx="2" fill="none" stroke="#10b981" stroke-width="2"/>
+  <line x1="62" y1="72" x2="62" y2="68" stroke="#10b981" stroke-width="2" stroke-linecap="round"/>
+  <line x1="66" y1="72" x2="66" y2="68" stroke="#10b981" stroke-width="2" stroke-linecap="round"/>
+</svg>
