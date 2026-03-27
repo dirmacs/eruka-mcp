@@ -65,10 +65,33 @@ Add to your `claude_desktop_config.json`:
 claude mcp add eruka eruka-mcp -e ERUKA_API_KEY=eruka_sk_...
 ```
 
-### SSE Transport (web clients)
+### Streamable HTTP Transport (remote MCP)
+
+Run as a remote MCP server for claude.ai web, Cursor, or any HTTP-capable MCP client:
 
 ```bash
 eruka-mcp --transport sse --port 8080
+```
+
+This starts a Streamable HTTP server (MCP spec 2025-03-26) at `http://localhost:8080/mcp`:
+- `POST /mcp` — JSON-RPC 2.0 requests (initialize, tools/list, tools/call)
+- `GET /mcp` — SSE notification stream
+- Session management via `Mcp-Session-Id` header
+
+#### Claude.ai Web
+
+Use the hosted endpoint at `https://eruka.dirmacs.com/mcp`:
+1. Go to claude.ai → Settings → Connectors → Add custom connector
+2. Enter URL: `https://eruka.dirmacs.com/mcp`
+3. Authenticate with your Eruka credentials (OAuth)
+4. All 13 tools are automatically available
+
+#### Direct HTTP Test
+
+```bash
+curl -X POST http://localhost:8080/mcp \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","method":"tools/list","id":1}'
 ```
 
 ## Tools

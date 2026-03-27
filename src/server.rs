@@ -109,7 +109,7 @@ pub async fn run_sse(server: McpServer, port: u16) -> Result<()> {
 
     let app = Router::new()
         .route("/health", get(|| async { "OK" }))
-        .route("/mcp", post(handle_mcp_post))
+        .route("/mcp", post(handle_mcp_post).get(handle_mcp_sse_stream))
         .layer(CorsLayer::permissive())
         .with_state(server);
 
@@ -122,15 +122,47 @@ pub async fn run_sse(server: McpServer, port: u16) -> Result<()> {
 
 async fn handle_mcp_post(
     axum::extract::State(server): axum::extract::State<Arc<Mutex<McpServer>>>,
+    headers: axum::http::HeaderMap,
     axum::Json(request): axum::Json<JsonRpcRequest>,
-) -> axum::Json<JsonRpcResponse> {
+) -> axum::response::Response {
+    use axum::response::IntoResponse;
     let response = handle_request(&server, request).await;
-    axum::Json(response.unwrap_or(JsonRpcResponse {
+    let json_resp = response.unwrap_or(JsonRpcResponse {
         jsonrpc: "2.0".to_string(),
         id: Value::Null,
         result: Some(json!({})),
         error: None,
-    }))
+    });
+
+    // Add Mcp-Session-Id header
+    let session_id = headers.get("mcp-session-id")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("")
+        .to_string();
+    let new_session = if session_id.is_empty() {
+        uuid::Uuid::new_v4().to_string()
+    } else {
+        session_id
+    };
+
+    let mut resp = axum::Json(json_resp).into_response();
+    if let Ok(val) = new_session.parse() {
+        resp.headers_mut().insert("Mcp-Session-Id", val);
+    }
+    resp
+}
+
+/// GET /mcp — SSE notification stream (Streamable HTTP spec)
+async fn handle_mcp_sse_stream(
+    axum::extract::State(_server): axum::extract::State<Arc<Mutex<McpServer>>>,
+) -> axum::response::sse::Sse<impl futures_util::stream::Stream<Item = Result<axum::response::sse::Event, std::convert::Infallible>>> {
+    let stream = async_stream::stream! {
+        loop {
+            tokio::time::sleep(std::time::Duration::from_secs(30)).await;
+            yield Ok(axum::response::sse::Event::default().data("ping"));
+        }
+    };
+    axum::response::sse::Sse::new(stream).keep_alive(axum::response::sse::KeepAlive::default())
 }
 
 async fn handle_request(
@@ -150,7 +182,7 @@ async fn handle_request(
 
     let result = match request.method.as_str() {
         "initialize" => Ok(json!({
-            "protocolVersion": "2024-11-05",
+            "protocolVersion": "2025-03-26",
             "capabilities": { "tools": {} },
             "serverInfo": {
                 "name": "eruka-mcp",
