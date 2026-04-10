@@ -204,6 +204,19 @@ pub fn get_tool_definitions(tier: Tier) -> Vec<Value> {
         }
     }));
 
+    // Portable context cores (Pillar 4 — export/import)
+    tools.push(json!({
+        "name": "eruka_export_context",
+        "description": "Export all context as a portable JSON bundle (context core). Use for backup, agent-to-agent transfer, or offline use. Returns all fields with metadata.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "category": { "type": "string", "description": "Export only this category (e.g., 'identity', 'products'). Omit for full export.", "default": "*" },
+                "include_metadata": { "type": "boolean", "description": "Include knowledge state, confidence, timestamps", "default": true }
+            }
+        }
+    }));
+
     // Pro-only tools
     if tier != Tier::Free {
         tools.push(json!({
@@ -357,6 +370,19 @@ pub async fn execute_tool(
                 .or_else(|| args.get("gap_id").and_then(|v| v.as_str()))
                 .ok_or_else(|| anyhow::anyhow!("Missing field_path or gap_id"))?;
             client.research_gap(field_path).await
+        }
+        "eruka_export_context" => {
+            let category = args.get("category").and_then(|v| v.as_str()).unwrap_or("*");
+            let include_metadata = args.get("include_metadata").and_then(|v| v.as_bool()).unwrap_or(true);
+            // Fetch all context for the given category
+            let context = client.get_context(category, include_metadata).await?;
+            Ok(json!({
+                "export_format": "eruka_context_core_v1",
+                "category": category,
+                "data": context,
+                "exported_at": chrono::Utc::now().to_rfc3339(),
+                "instructions": "Import this bundle into another Eruka instance via eruka_write_context for each field."
+            }))
         }
         "eruka_prefetch" => {
             let query = arg_str(&args, "query")?;
