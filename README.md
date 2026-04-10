@@ -84,7 +84,7 @@ Use the hosted endpoint at `https://eruka.dirmacs.com/mcp`:
 1. Go to claude.ai → Settings → Connectors → Add custom connector
 2. Enter URL: `https://eruka.dirmacs.com/mcp`
 3. Authenticate with your Eruka credentials (OAuth)
-4. All 13 tools are automatically available
+4. All 17 tools are automatically available
 
 #### Direct HTTP Test
 
@@ -109,6 +109,11 @@ curl -X POST http://localhost:8080/mcp \
 | `eruka_get_related` | Traverse the knowledge graph | Free |
 | `eruka_add_relationship` | Create typed edges in the knowledge graph | Free |
 | `eruka_get_context_compressed` | Token-efficient compressed context | Free |
+| `eruka_get_context_cached` | Diff-based caching with session tracking (20-30% token savings) | Free |
+| `eruka_prefetch` | Agent lifecycle: pre-fetch context for current turn | Free |
+| `eruka_sync_turn` | Persist conversation turns to context store | Free |
+| `eruka_on_pre_compress` | Save insights before context window compression | Free |
+| `eruka_export_context` | Export all context as portable JSON bundle | Free |
 | `eruka_query_temporal` | Query context at a point in time | Pro |
 | `eruka_research_gap` | Auto-research and fill knowledge gaps | Pro |
 
