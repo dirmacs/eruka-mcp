@@ -126,7 +126,7 @@ alias eruka='eruka-mcp'
 # Then: eruka get "*", eruka write ..., eruka health
 ```
 
-## CLI Commands (v0.2.1+)
+## CLI Commands
 
 eruka-mcp works as both an MCP server AND a standalone CLI tool. Without a subcommand, it runs as an MCP server (backward compatible).
 
