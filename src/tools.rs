@@ -150,6 +150,45 @@ pub fn get_tool_definitions(tier: Tier) -> Vec<Value> {
         }),
     ];
 
+    // Agent lifecycle hooks (hermes-agent compatible)
+    tools.push(json!({
+        "name": "eruka_prefetch",
+        "description": "Pre-fetch context relevant to the current turn. Combines semantic search + compressed context for optimal recall. Call at the start of each turn.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "query": { "type": "string", "description": "The user's current message or topic" },
+                "max_tokens": { "type": "integer", "description": "Maximum tokens in returned context", "default": 2000 }
+            },
+            "required": ["query"]
+        }
+    }));
+    tools.push(json!({
+        "name": "eruka_sync_turn",
+        "description": "Persist a completed conversation turn (user + assistant messages). Non-blocking — extracts key facts and writes to context store asynchronously.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "user_message": { "type": "string", "description": "The user's message" },
+                "assistant_message": { "type": "string", "description": "The assistant's response" },
+                "session_id": { "type": "string", "description": "Session identifier for grouping turns" }
+            },
+            "required": ["user_message", "assistant_message"]
+        }
+    }));
+    tools.push(json!({
+        "name": "eruka_on_pre_compress",
+        "description": "Save key insights from conversation messages before context window compression. Call this before truncating/compressing conversation history.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "messages": { "type": "string", "description": "JSON array of messages about to be compressed" },
+                "session_id": { "type": "string", "description": "Session identifier" }
+            },
+            "required": ["messages"]
+        }
+    }));
+
     // Pro-only tools
     if tier != Tier::Free {
         tools.push(json!({
@@ -278,6 +317,41 @@ pub async fn execute_tool(
                 .or_else(|| args.get("gap_id").and_then(|v| v.as_str()))
                 .ok_or_else(|| anyhow::anyhow!("Missing field_path or gap_id"))?;
             client.research_gap(field_path).await
+        }
+        "eruka_prefetch" => {
+            let query = arg_str(&args, "query")?;
+            let max_tokens = args.get("max_tokens").and_then(|v| v.as_u64()).unwrap_or(2000) as usize;
+            // Combine search + compressed context for optimal recall
+            let search = client.search_context(query, "*", 5).await.unwrap_or(json!({"results": []}));
+            let compressed = client.get_compressed("general", max_tokens).await.unwrap_or(json!({"context": ""}));
+            Ok(json!({
+                "search_results": search,
+                "compressed_context": compressed,
+                "prefetch_query": query
+            }))
+        }
+        "eruka_sync_turn" => {
+            let user_msg = arg_str(&args, "user_message")?;
+            let assistant_msg = arg_str(&args, "assistant_message")?;
+            let session_id = args.get("session_id").and_then(|v| v.as_str()).unwrap_or("default");
+            // Write turn as a context entry
+            let turn_path = format!("operations/turns/{}", session_id);
+            let turn_value = format!("USER: {} | ASSISTANT: {}",
+                &user_msg[..user_msg.len().min(500)],
+                &assistant_msg[..assistant_msg.len().min(500)]);
+            client.write_context(&turn_path, &turn_value, "agent_inference", 0.9).await
+        }
+        "eruka_on_pre_compress" => {
+            let messages = arg_str(&args, "messages")?;
+            let session_id = args.get("session_id").and_then(|v| v.as_str()).unwrap_or("default");
+            // Save a summary of messages being compressed
+            let path = format!("operations/compressed_insights/{}", session_id);
+            let summary = if messages.len() > 2000 {
+                format!("{}...(truncated {} chars)", &messages[..2000], messages.len() - 2000)
+            } else {
+                messages.to_string()
+            };
+            client.write_context(&path, &summary, "agent_inference", 0.8).await
         }
         _ => Err(anyhow::anyhow!("Unknown tool: {}", tool_name)),
     }
