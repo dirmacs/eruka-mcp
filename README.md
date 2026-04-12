@@ -34,11 +34,13 @@ cargo build --release
 
 eruka-mcp works with two backends:
 
-### Local mode — openeruka (no account needed)
+### Local mode — [openeruka](https://github.com/dirmacs/openeruka)
+
+Run the open-source Eruka server locally — single binary, SQLite backend, zero infrastructure.
 
 ```bash
 # 1. Install the local server
-cargo install openeruka
+cargo install openeruka-server   # installs the `openeruka` binary
 
 # 2. Start it
 openeruka serve  # runs at http://localhost:8080
@@ -46,6 +48,8 @@ openeruka serve  # runs at http://localhost:8080
 # 3. Run eruka-mcp — connects to localhost:8080 by default
 eruka-mcp
 ```
+
+Full docs: [dirmacs.github.io/openeruka](https://dirmacs.github.io/openeruka)
 
 ### Managed mode — eruka.dirmacs.com
 
@@ -62,7 +66,7 @@ export ERUKA_API_KEY=eruka_sk_...
 
 ### Claude Desktop
 
-**Local mode** (openeruka — no account needed):
+**Local mode** (openeruka — runs locally, no service required):
 ```json
 {
   "mcpServers": {
