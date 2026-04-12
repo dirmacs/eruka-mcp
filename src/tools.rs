@@ -25,7 +25,9 @@ pub fn get_tool_definitions(tier: Tier) -> Vec<Value> {
                 "properties": {
                     "path": { "type": "string", "description": "Schema path, e.g., 'identity/company_name' or 'products/*'" },
                     "depth": { "type": "integer", "description": "How deep to traverse (default 1)", "default": 1 },
-                    "include_metadata": { "type": "boolean", "description": "Include knowledge state, confidence, timestamps", "default": true }
+                    "include_metadata": { "type": "boolean", "description": "Include knowledge state, confidence, timestamps", "default": true },
+                    "compact": { "type": "boolean", "description": "Return compact plain-text instead of verbose JSON. Saves ~60-80% tokens. Recommended for context injection.", "default": false },
+                    "max_tokens": { "type": "integer", "description": "Token budget for compact mode (default 2000). Ignored unless compact=true.", "default": 2000 }
                 },
                 "required": ["path"]
             }
@@ -38,7 +40,9 @@ pub fn get_tool_definitions(tier: Tier) -> Vec<Value> {
                 "properties": {
                     "query": { "type": "string", "description": "Natural language search query" },
                     "scope": { "type": "string", "description": "Limit search to a category", "default": "*" },
-                    "max_results": { "type": "integer", "description": "Maximum results to return", "default": 5 }
+                    "max_results": { "type": "integer", "description": "Maximum results to return", "default": 5 },
+                    "compact": { "type": "boolean", "description": "Return compact plain-text instead of verbose JSON. Saves ~60-80% tokens. Recommended for context injection.", "default": false },
+                    "max_tokens": { "type": "integer", "description": "Token budget for compact mode (default 2000). Ignored unless compact=true.", "default": 2000 }
                 },
                 "required": ["query"]
             }
@@ -281,13 +285,17 @@ pub async fn execute_tool(
         "eruka_get_context" => {
             let path = arg_str(&args, "path")?;
             let include_metadata = args.get("include_metadata").and_then(|v| v.as_bool()).unwrap_or(true);
-            client.get_context(path, include_metadata).await
+            let compact = args.get("compact").and_then(|v| v.as_bool()).unwrap_or(false);
+            let max_tokens = args.get("max_tokens").and_then(|v| v.as_u64()).unwrap_or(2000) as usize;
+            client.get_context_ex(path, include_metadata, compact, max_tokens).await
         }
         "eruka_search_context" => {
             let query = arg_str(&args, "query")?;
             let scope = args.get("scope").and_then(|v| v.as_str()).unwrap_or("*");
             let max_results = args.get("max_results").and_then(|v| v.as_u64()).unwrap_or(5) as usize;
-            client.search_context(query, scope, max_results).await
+            let compact = args.get("compact").and_then(|v| v.as_bool()).unwrap_or(false);
+            let max_tokens = args.get("max_tokens").and_then(|v| v.as_u64()).unwrap_or(2000) as usize;
+            client.search_context_ex(query, scope, max_results, compact, max_tokens).await
         }
         "eruka_get_completeness" => {
             let scope = args.get("scope").and_then(|v| v.as_str()).unwrap_or("*");

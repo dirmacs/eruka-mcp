@@ -72,11 +72,25 @@ impl ErukaClient {
 
     /// eruka_get_context: GET /api/v1/context?path=X&include_metadata=true
     pub async fn get_context(&self, path: &str, include_metadata: bool) -> Result<Value> {
-        let url = format!(
+        self.get_context_ex(path, include_metadata, false, 2000).await
+    }
+
+    /// Extended get_context with optional extraction-side compaction.
+    pub async fn get_context_ex(
+        &self,
+        path: &str,
+        include_metadata: bool,
+        compact: bool,
+        max_tokens: usize,
+    ) -> Result<Value> {
+        let mut url = format!(
             "/api/v1/context?path={}&include_metadata={}",
             urlencoding::encode(path),
             include_metadata
         );
+        if compact {
+            url.push_str(&format!("&compact=true&max_tokens={}", max_tokens));
+        }
         self.get(&url).await
     }
 
@@ -87,15 +101,28 @@ impl ErukaClient {
         scope: &str,
         max_results: usize,
     ) -> Result<Value> {
-        self.post(
-            "/api/v1/context/search",
-            &serde_json::json!({
-                "query": query,
-                "scope": scope,
-                "max_results": max_results
-            }),
-        )
-        .await
+        self.search_context_ex(query, scope, max_results, false, 2000).await
+    }
+
+    /// Extended search_context with optional extraction-side compaction.
+    pub async fn search_context_ex(
+        &self,
+        query: &str,
+        scope: &str,
+        max_results: usize,
+        compact: bool,
+        max_tokens: usize,
+    ) -> Result<Value> {
+        let mut body = serde_json::json!({
+            "query": query,
+            "scope": scope,
+            "max_results": max_results
+        });
+        if compact {
+            body["compact"] = serde_json::json!(true);
+            body["max_tokens"] = serde_json::json!(max_tokens);
+        }
+        self.post("/api/v1/context/search", &body).await
     }
 
     /// eruka_get_completeness: GET /api/v1/completeness or /api/v1/completeness/:scope
