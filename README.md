@@ -32,11 +32,29 @@ cargo build --release
 
 ## Setup
 
+eruka-mcp works with two backends:
+
+### Local mode — openeruka (no account needed)
+
+```bash
+# 1. Install the local server
+cargo install openeruka
+
+# 2. Start it
+openeruka serve  # runs at http://localhost:8080
+
+# 3. Run eruka-mcp — connects to localhost:8080 by default
+eruka-mcp
+```
+
+### Managed mode — eruka.dirmacs.com
+
 1. Sign up at [eruka.dirmacs.com](https://eruka.dirmacs.com)
 2. Create a service key (Settings > API Keys)
 3. Set your key:
 
 ```bash
+export ERUKA_API_URL=https://eruka.dirmacs.com
 export ERUKA_API_KEY=eruka_sk_...
 ```
 
@@ -44,14 +62,25 @@ export ERUKA_API_KEY=eruka_sk_...
 
 ### Claude Desktop
 
-Add to your `claude_desktop_config.json`:
+**Local mode** (openeruka — no account needed):
+```json
+{
+  "mcpServers": {
+    "eruka": {
+      "command": "eruka-mcp"
+    }
+  }
+}
+```
 
+**Managed mode** (eruka.dirmacs.com):
 ```json
 {
   "mcpServers": {
     "eruka": {
       "command": "eruka-mcp",
       "env": {
+        "ERUKA_API_URL": "https://eruka.dirmacs.com",
         "ERUKA_API_KEY": "eruka_sk_..."
       }
     }
@@ -61,8 +90,16 @@ Add to your `claude_desktop_config.json`:
 
 ### Claude Code
 
+**Local mode:**
 ```bash
-claude mcp add eruka eruka-mcp -e ERUKA_API_KEY=eruka_sk_...
+claude mcp add eruka eruka-mcp
+```
+
+**Managed mode:**
+```bash
+claude mcp add eruka eruka-mcp \
+  -e ERUKA_API_URL=https://eruka.dirmacs.com \
+  -e ERUKA_API_KEY=eruka_sk_...
 ```
 
 ### Streamable HTTP Transport (remote MCP)
@@ -166,8 +203,8 @@ All CLI commands use the same `ERUKA_API_KEY` and `ERUKA_API_URL` environment va
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `ERUKA_API_KEY` | Service key (required) | — |
-| `ERUKA_API_URL` | Eruka API URL | `https://eruka.dirmacs.com` |
+| `ERUKA_API_URL` | Backend URL — local openeruka or managed service | `http://localhost:8080` |
+| `ERUKA_API_KEY` | Service key — `"local"` for openeruka, `eruka_sk_...` for managed | `local` |
 
 ## CLI Reference
 

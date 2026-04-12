@@ -3,31 +3,54 @@
 //! Model Context Protocol server for [Eruka](https://eruka.dirmacs.com) —
 //! anti-hallucination context memory for AI agents.
 //!
-//! ## Quick Start
+//! Supports two backends:
+//! - **Local (openeruka)**: self-hosted SQLite/redb store, no account needed
+//! - **Managed (eruka.dirmacs.com)**: hosted service with quality scoring, decay, and graph
+//!
+//! ## Quick Start — Local Mode (openeruka)
 //!
 //! ```bash
-//! # Install
+//! # 1. Install openeruka server
+//! cargo install openeruka
+//!
+//! # 2. Start the local server
+//! openeruka serve
+//!
+//! # 3. Install and run eruka-mcp (connects to localhost:8080 by default)
 //! cargo install eruka-mcp
-//!
-//! # Get your API key at https://eruka.dirmacs.com
-//! export ERUKA_API_KEY=eruka_sk_...
-//!
-//! # Run (stdio transport for Claude Desktop / Claude Code)
 //! eruka-mcp
+//! ```
 //!
-//! # Or with SSE transport for web clients
-//! eruka-mcp --transport sse --port 8080
+//! ## Quick Start — Managed Mode (eruka.dirmacs.com)
+//!
+//! ```bash
+//! cargo install eruka-mcp
+//! export ERUKA_API_URL=https://eruka.dirmacs.com
+//! export ERUKA_API_KEY=eruka_sk_...
+//! eruka-mcp
 //! ```
 //!
 //! ## Claude Desktop Configuration
 //!
-//! Add to `claude_desktop_config.json`:
+//! Local mode (openeruka):
+//! ```json
+//! {
+//!   "mcpServers": {
+//!     "eruka": {
+//!       "command": "eruka-mcp"
+//!     }
+//!   }
+//! }
+//! ```
+//!
+//! Managed mode (eruka.dirmacs.com):
 //! ```json
 //! {
 //!   "mcpServers": {
 //!     "eruka": {
 //!       "command": "eruka-mcp",
 //!       "env": {
+//!         "ERUKA_API_URL": "https://eruka.dirmacs.com",
 //!         "ERUKA_API_KEY": "eruka_sk_..."
 //!       }
 //!     }
@@ -52,13 +75,13 @@ mod tools;
 #[command(version)]
 #[command(args_conflicts_with_subcommands = true)]
 struct Args {
-    /// Eruka API URL
-    #[arg(long, env = "ERUKA_API_URL", default_value = "https://eruka.dirmacs.com")]
+    /// Eruka API URL (local openeruka or managed eruka.dirmacs.com)
+    #[arg(long, env = "ERUKA_API_URL", default_value = "http://localhost:8080")]
     api_url: String,
 
-    /// Service key (get yours at https://eruka.dirmacs.com)
-    #[arg(long, env = "ERUKA_API_KEY")]
-    api_key: Option<String>,
+    /// Service key — use "local" for openeruka, get a key at https://eruka.dirmacs.com for managed
+    #[arg(long, env = "ERUKA_API_KEY", default_value = "local")]
+    api_key: String,
 
     /// Tier override (auto-detected from key prefix)
     #[arg(long, default_value = "free")]
@@ -135,12 +158,17 @@ async fn main() -> Result<()> {
 
     info!("Eruka MCP Server v{}", env!("CARGO_PKG_VERSION"));
 
-    let api_key = args.api_key.ok_or_else(|| {
-        anyhow::anyhow!(
-            "Missing API key. Set ERUKA_API_KEY or pass --api-key.\n\
-             Get your key at https://eruka.dirmacs.com"
-        )
-    })?;
+    let api_key = args.api_key;
+
+    // Warn when using managed service URL without a real key
+    let is_managed = args.api_url.contains("eruka.dirmacs.com");
+    if is_managed && (api_key == "local" || api_key.is_empty()) {
+        anyhow::bail!(
+            "Managed Eruka requires an API key.\n\
+             Set ERUKA_API_KEY=eruka_sk_... or get one at https://eruka.dirmacs.com\n\
+             For local mode, run `openeruka serve` and omit ERUKA_API_URL."
+        );
+    }
 
     let eruka = client::ErukaClient::new(&args.api_url, &api_key);
     let is_json = args.format == "json";
