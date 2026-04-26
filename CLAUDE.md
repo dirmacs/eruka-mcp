@@ -24,7 +24,7 @@ eruka-mcp gaps                                     # CLI: find missing fields
 ## Environment
 
 - `ERUKA_API_KEY` — required, service key for Eruka API
-- `ERUKA_API_URL` — optional, defaults to http://localhost:8081
+- `ERUKA_API_URL` — optional, defaults to http://localhost:8080 (openeruka local) or https://eruka.dirmacs.com (managed)
 
 ## Conventions
 

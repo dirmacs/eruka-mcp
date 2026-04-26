@@ -125,7 +125,7 @@ Use the hosted endpoint at `https://eruka.dirmacs.com/mcp`:
 1. Go to claude.ai → Settings → Connectors → Add custom connector
 2. Enter URL: `https://eruka.dirmacs.com/mcp`
 3. Authenticate with your Eruka credentials (OAuth)
-4. All 17 tools are automatically available
+4. All 18 tools are automatically available
 
 #### Direct HTTP Test
 
