@@ -68,6 +68,9 @@ mod client;
 mod server;
 mod tools;
 
+#[cfg(test)]
+mod tests_integration;
+
 /// Eruka MCP Server & CLI — Context Memory for AI Agents
 #[derive(Parser, Debug)]
 #[command(name = "eruka-mcp")]

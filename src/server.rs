@@ -218,6 +218,18 @@ async fn handle_request(
     })
 }
 
+/// Public test-facing wrapper: accepts raw JSON Value, returns JSON Value response.
+/// Only compiled in test builds.
+#[cfg(test)]
+pub async fn handle_request_pub(
+    server: &Arc<Mutex<McpServer>>,
+    req_json: serde_json::Value,
+) -> Option<serde_json::Value> {
+    let req: JsonRpcRequest = serde_json::from_value(req_json).ok()?;
+    let resp = handle_request(server, req).await?;
+    Some(serde_json::to_value(resp).ok()?)
+}
+
 async fn handle_tools_call(
     server: &Arc<Mutex<McpServer>>,
     params: Option<Value>,
