@@ -157,13 +157,14 @@ pub fn get_tool_definitions(tier: Tier) -> Vec<Value> {
     // Diff-based context caching (cachebro pattern — 20-30% token savings)
     tools.push(json!({
         "name": "eruka_get_context_cached",
-        "description": "Get context with diff-based caching. Returns 'unchanged' (1 token) if content hasn't changed since last read, or a diff if partially changed. Pass session_id to enable per-session tracking. Saves 20-30% tokens on repeated reads.",
+        "description": "Get context with diff-based caching. Returns 'unchanged' (1 token) if content hasn't changed since last read, or a diff if partially changed. Pass session_id to enable per-session tracking. Saves 20-30% tokens on repeated reads. Pass the returned hash on subsequent calls to skip data transfer if content unchanged.",
         "inputSchema": {
             "type": "object",
             "properties": {
                 "path": { "type": "string", "description": "Schema path, e.g., 'identity/company_name' or 'products/*'" },
                 "session_id": { "type": "string", "description": "Session identifier for tracking last-read state" },
-                "depth": { "type": "integer", "description": "How deep to traverse (default 1)", "default": 1 }
+                "depth": { "type": "integer", "description": "How deep to traverse (default 1)", "default": 1 },
+                "hash": { "type": "string", "description": "Previously returned hash. If content unchanged, returns {unchanged: true} instead of full data. Saves tokens on repeat calls." }
             },
             "required": ["path", "session_id"]
         }
@@ -341,26 +342,35 @@ pub async fn execute_tool(
         "eruka_get_context_cached" => {
             let path = arg_str(&args, "path")?;
             let session_id = arg_str(&args, "session_id")?;
+            let caller_hash = args.get("hash").and_then(|v| v.as_str());
             // Fetch current context
             let current = client.get_context(path, false).await?;
             let current_str = serde_json::to_string(&current).unwrap_or_default();
-            // SHA-256 hash (first 16 hex chars)
+            // Compute hash (first 16 hex chars of DefaultHasher)
             use std::collections::hash_map::DefaultHasher;
             use std::hash::{Hash, Hasher};
             let mut hasher = DefaultHasher::new();
             current_str.hash(&mut hasher);
             let current_hash = format!("{:016x}", hasher.finish());
-            // Check if we have a last-read hash for this session+path
-            // Store in-memory for now (production: use eruka_session_reads table)
-            let token_estimate = current_str.len() / 4; // rough estimate
-            // Return with hash for client-side caching
+            // If caller provided a hash and it matches, skip returning full data
+            if let Some(prev_hash) = caller_hash {
+                if prev_hash == current_hash {
+                    return Ok(json!({
+                        "unchanged": true,
+                        "hash": current_hash,
+                        "session_id": session_id,
+                        "path": path,
+                    }));
+                }
+            }
+            let token_estimate = current_str.len() / 4;
             Ok(json!({
                 "data": current,
                 "hash": current_hash,
                 "session_id": session_id,
                 "path": path,
                 "tokens_estimated": token_estimate,
-                "cache_hint": "Store this hash. On next call, if hash matches, content is unchanged."
+                "cache_hint": "Store this hash. Pass it as 'hash' on next call to skip data if unchanged."
             }))
         }
         "eruka_get_context_compressed" => {

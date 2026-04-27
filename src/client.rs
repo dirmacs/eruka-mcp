@@ -279,4 +279,14 @@ impl ErukaClient {
             .await?;
         Ok(resp.status().is_success())
     }
+
+    /// Get workspace tier from server.
+    /// Returns the tier string ("free", "pro", "enterprise") or None on error.
+    /// Used at startup to determine which MCP tools to expose.
+    pub async fn get_server_tier(&self) -> Option<String> {
+        match self.get("/api/v1/tier").await {
+            Ok(v) => v.get("tier").and_then(|t| t.as_str()).map(|s| s.to_string()),
+            Err(_) => None,
+        }
+    }
 }

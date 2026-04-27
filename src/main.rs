@@ -191,16 +191,34 @@ async fn main() -> Result<()> {
         Err(e) => anyhow::bail!("Cannot connect to Eruka API at {}: {}", args.api_url, e),
     }
 
-    // Auto-detect tier from key prefix
-    let tier = if api_key.starts_with("eruka_sk_ent_") || args.tier == "enterprise" {
+    // Detect tier: explicit CLI flag > server query > key prefix fallback
+    let tier = if args.tier == "enterprise" {
         auth::Tier::Enterprise
-    } else if api_key.starts_with("eruka_sk_pro_") || args.tier == "pro" {
+    } else if args.tier == "pro" {
         auth::Tier::Pro
+    } else if args.tier == "free" && (api_key.starts_with("eruka_sk_ent_") || api_key.starts_with("eruka_sk_pro_")) {
+        // Key prefix override (legacy)
+        if api_key.starts_with("eruka_sk_ent_") { auth::Tier::Enterprise } else { auth::Tier::Pro }
     } else {
-        auth::Tier::Free
+        // Query server for actual workspace tier
+        let server_tier = eruka.get_server_tier().await;
+        match server_tier.as_deref() {
+            Some("enterprise") => auth::Tier::Enterprise,
+            Some("pro") => auth::Tier::Pro,
+            _ => {
+                // Final fallback: key prefix
+                if api_key.starts_with("eruka_sk_ent_") {
+                    auth::Tier::Enterprise
+                } else if api_key.starts_with("eruka_sk_pro_") {
+                    auth::Tier::Pro
+                } else {
+                    auth::Tier::Free
+                }
+            }
+        }
     };
 
-    info!("Tier: {}", tier.as_str());
+    info!("Tier: {} (workspace)", tier.as_str());
 
     let mcp_server = server::McpServer::new(eruka, tier);
 
