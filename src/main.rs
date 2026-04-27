@@ -26,7 +26,7 @@
 //! ```bash
 //! cargo install eruka-mcp
 //! export ERUKA_API_URL=https://eruka.dirmacs.com
-//! export ERUKA_API_KEY=eruka_sk_...
+//! export ERUKA_API_KEY=***
 //! eruka-mcp
 //! ```
 //!
@@ -165,7 +165,7 @@ async fn main() -> Result<()> {
     if is_managed && (api_key == "local" || api_key.is_empty()) {
         anyhow::bail!(
             "Managed Eruka requires an API key.\n\
-             Set ERUKA_API_KEY=eruka_sk_... or get one at https://eruka.dirmacs.com\n\
+             Set ERUKA_API_KEY=*** or get one at https://eruka.dirmacs.com\n\
              For local mode, run `openeruka serve` and omit ERUKA_API_URL."
         );
     }
@@ -272,9 +272,14 @@ async fn run_cli(cmd: CliCommand, eruka: &client::ErukaClient, json: bool) -> Re
                 let results = result["results"].as_array().cloned().unwrap_or_default();
                 println!("{} results for \"{}\":", results.len(), query);
                 for r in &results {
-                    let path = r["field_path"].as_str().unwrap_or("?");
-                    let val = r["value"].as_str().unwrap_or("?");
-                    println!("  {} = {}", path, val);
+                    let path = r["path"].as_str()
+                        .or_else(|| r["field_path"].as_str())
+                        .unwrap_or("?");
+                    let val = r["content"].as_str()
+                        .or_else(|| r["value"].as_str())
+                        .unwrap_or("?");
+                    let truncated = if val.len() > 120 { &val[..120] } else { val };
+                    println!("  {} = {}", path, truncated);
                 }
             }
         }

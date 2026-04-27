@@ -2,6 +2,13 @@
 
 All notable changes to eruka-mcp are documented here.
 
+## [0.3.3] — 2026-04-27
+
+### Fixed
+- CLI `search` command now correctly reads `path` and `content` keys from the search API
+  response (previously looked for `field_path`/`value`, showing `?` for all results).
+- Search results truncated to 120 chars for readable terminal output.
+
 ## [0.3.2] — 2026-04-27
 
 ### Added
